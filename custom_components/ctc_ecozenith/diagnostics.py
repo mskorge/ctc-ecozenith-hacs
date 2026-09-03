@@ -22,8 +22,14 @@ async def async_get_config_entry_diagnostics(
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
     data = entry.runtime_data
+    alarms = data.coordinator.alarms
     return {
         "vendored_library_version": LIBRARY_VERSION,
         "entry_data": async_redact_data(entry.data, TO_REDACT),
+        "alarms": {
+            "codes": [f"E{alarm.code}" for alarm in alarms.alarms],
+            "heat_pump": [alarm.heat_pump for alarm in alarms.alarms],
+            "info_texts": [f"I{info.code}" for info in alarms.infos],
+        },
         "raw": await data.client.device.async_read_raw(),
     }

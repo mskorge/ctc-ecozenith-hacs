@@ -233,7 +233,11 @@ async def async_setup_entry(
 ) -> None:
     """Set up CTC EcoZenith sensors."""
     coordinator = entry.runtime_data.coordinator
-    async_add_entities(CtcSensor(coordinator, description) for description in SENSORS)
+    entities: list[SensorEntity] = [
+        CtcSensor(coordinator, description) for description in SENSORS
+    ]
+    entities.append(CtcActiveAlarmSensor(coordinator))
+    async_add_entities(entities)
 
 
 class CtcSensor(CtcEcoZenithEntity, SensorEntity):
@@ -254,3 +258,29 @@ class CtcSensor(CtcEcoZenithEntity, SensorEntity):
     def native_value(self) -> StateType:
         """Return the current value."""
         return self.entity_description.value_fn(self.coordinator.device)
+
+
+class CtcActiveAlarmSensor(CtcEcoZenithEntity, SensorEntity):
+    """The active alarm code(s), or nothing when the controller is healthy."""
+
+    _attr_translation_key = "active_alarm"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator: CtcDataUpdateCoordinator) -> None:
+        """Initialize the active-alarm sensor."""
+        super().__init__(coordinator, "active_alarm")
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the active alarm codes as ``E<n>``, comma-joined, or ``None``."""
+        alarms = self.coordinator.alarms.alarms
+        return ", ".join(f"E{alarm.code}" for alarm in alarms) or None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, object]:
+        """List every active alarm and info-text code."""
+        snapshot = self.coordinator.alarms
+        return {
+            "alarm_codes": [f"E{alarm.code}" for alarm in snapshot.alarms],
+            "info_texts": [f"I{info.code}" for info in snapshot.infos],
+        }

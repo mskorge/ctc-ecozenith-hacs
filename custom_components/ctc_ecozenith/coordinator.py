@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Any
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import CtcApiError
+from .api import AlarmSnapshot, CtcApiError
 from .const import DEFAULT_SCAN_INTERVAL, DOMAIN, KEEPALIVE_INTERVAL, LOGGER
 
 if TYPE_CHECKING:
@@ -54,7 +54,13 @@ class CtcDataUpdateCoordinator(DataUpdateCoordinator[None]):
         self._client = client
         self._overrides: dict[_OverrideKey, Any] = {}
         self._cancel_keepalive: Callable[[], None] | None = None
+        self._alarms = AlarmSnapshot()
         entry.async_on_unload(self._stop_keepalive)
+
+    @property
+    def alarms(self) -> AlarmSnapshot:
+        """Return the last-read alarm / info-text buffers (empty on read failure)."""
+        return self._alarms
 
     @property
     def device(self) -> CtcEcoZenith:
@@ -106,8 +112,17 @@ class CtcDataUpdateCoordinator(DataUpdateCoordinator[None]):
                 )
 
     async def _async_update_data(self) -> None:
-        """Refresh settings and readings."""
+        """Refresh settings and readings, then the alarm buffers separately."""
         try:
             await self._client.async_update()
         except CtcApiError as err:
             raise UpdateFailed(str(err)) from err
+
+        # The 65xxx alarm range is outside the register windows proven on the
+        # reference unit. Keep its failure isolated: a controller that rejects it
+        # must not take every sensor down with it.
+        try:
+            self._alarms = await self._client.async_read_alarms()
+        except CtcApiError as err:
+            LOGGER.warning("Alarm read failed (%s); clearing alarm state", err)
+            self._alarms = AlarmSnapshot()

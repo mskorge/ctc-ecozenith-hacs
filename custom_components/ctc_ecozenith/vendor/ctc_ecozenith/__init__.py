@@ -7,6 +7,7 @@ connection itself: build a :class:`modbus_connection.ModbusUnit` with any backen
 
 from __future__ import annotations
 
+from .alarms import Alarms, AlarmSnapshot, CtcAlarm, CtcInfoText
 from .control_parameters import (
     HS_SETPOINT_MAX,
     HS_SETPOINT_MIN,
@@ -43,9 +44,13 @@ __all__ = [
     "PRODUCT_TYPE",
     "PROBE_REGISTER",
     "SETPOINT_STEP",
+    "AlarmSnapshot",
+    "Alarms",
     "ControlParameters",
+    "CtcAlarm",
     "CtcEcoZenith",
     "CtcError",
+    "CtcInfoText",
     "CtcValueError",
     "DeviceInformation",
     "DhwMode",

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 from modbus_connection.model import Component, ComponentGroup
 
+from .alarms import Alarms, AlarmSnapshot
 from .control_parameters import ControlParameters
 from .readings import Readings
 from .settings import Settings
@@ -76,6 +77,7 @@ class CtcEcoZenith:
         self.settings = Settings(unit)
         self.readings = Readings(unit)
         self.control_parameters = ControlParameters(unit)
+        self.alarms = Alarms(unit)
         self.info = DeviceInformation()
         self._group = ComponentGroup(unit, self._components)
 
@@ -96,6 +98,15 @@ class CtcEcoZenith:
         """
         (value,) = await self._unit.read_holding_registers(PROBE_REGISTER, 1)
         return value
+
+    async def async_read_alarms(self) -> AlarmSnapshot:
+        """Read the alarm / info-text buffers (registers 65133 + 65010-65069).
+
+        A separate stateful read, deliberately kept out of :meth:`async_update`
+        so a controller that rejects the 65xxx range fails only this call.
+        Raises :class:`modbus_connection.ModbusError` on a transport failure.
+        """
+        return await self.alarms.async_read()
 
     async def async_write(self, component: str, field: str, value: Any) -> None:
         """Write ``value`` to ``field`` of the named component ("control_parameters").

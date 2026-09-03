@@ -4,6 +4,25 @@ All notable changes to this integration are documented here. Versions follow
 [semantic versioning](https://semver.org/); the version in
 `custom_components/ctc_ecozenith/manifest.json` matches the release tag.
 
+## 0.1.2 - 2026-09-03
+
+### Added
+
+- **`switch` — Extra hot water.** Triggers a hot-water top-up via control
+  parameter 1006; the coordinator re-asserts it every four minutes. Turning it
+  off stops re-asserting and the controller ends the top-up within five minutes
+  (there is no documented "cancel now" value for 1006).
+- **`binary_sensor` — Problem.** `device_class: problem`, on whenever the
+  controller reports one or more active alarms; the active `E` codes (and any
+  info-text `I` codes) are listed in its attributes.
+- **`sensor` — Active alarm** (diagnostic). The active alarm code(s) as
+  `E<n>`, or unknown when the controller is healthy.
+- Alarms are read from registers `65133` + `65010`-`65069` after each poll, as
+  a separate call: that range is outside the register windows proven on the
+  reference unit, so a controller that rejects it logs a warning and clears the
+  alarm state instead of failing the whole update.
+- Vendored `ctc_ecozenith` library bumped to `v0.1.2`.
+
 ## 0.1.1 - 2026-09-03
 
 ### Fixed

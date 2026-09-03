@@ -14,6 +14,7 @@ from .vendor.ctc_ecozenith import (
     HS_SETPOINT_MAX,
     HS_SETPOINT_MIN,
     SETPOINT_STEP,
+    AlarmSnapshot,
     CtcEcoZenith,
     software_version,
 )
@@ -24,6 +25,7 @@ __all__ = [
     "HS_SETPOINT_MIN",
     "LIBRARY_VERSION",
     "SETPOINT_STEP",
+    "AlarmSnapshot",
     "CtcApiClient",
     "CtcApiError",
     "CtcEcoZenith",
@@ -64,6 +66,13 @@ class CtcApiClient:
         """Refresh settings and readings."""
         try:
             await self._device.async_update()
+        except ModbusError as err:
+            raise CtcApiError(str(err)) from err
+
+    async def async_read_alarms(self) -> AlarmSnapshot:
+        """Read the alarm / info-text buffers (a separate stateful read)."""
+        try:
+            return await self._device.async_read_alarms()
         except ModbusError as err:
             raise CtcApiError(str(err)) from err
 

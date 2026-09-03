@@ -62,9 +62,11 @@ async def async_setup_entry(
 ) -> None:
     """Set up CTC EcoZenith binary sensors."""
     coordinator = entry.runtime_data.coordinator
-    async_add_entities(
+    entities: list[BinarySensorEntity] = [
         CtcBinarySensor(coordinator, description) for description in BINARY_SENSORS
-    )
+    ]
+    entities.append(CtcProblemBinarySensor(coordinator))
+    async_add_entities(entities)
 
 
 class CtcBinarySensor(CtcEcoZenithEntity, BinarySensorEntity):
@@ -85,3 +87,32 @@ class CtcBinarySensor(CtcEcoZenithEntity, BinarySensorEntity):
     def is_on(self) -> bool | None:
         """Return true if the flag is set."""
         return self.entity_description.value_fn(self.coordinator.device)
+
+
+class CtcProblemBinarySensor(CtcEcoZenithEntity, BinarySensorEntity):
+    """On whenever the controller has one or more active alarms."""
+
+    _attr_translation_key = "problem"
+    _attr_device_class = BinarySensorDeviceClass.PROBLEM
+
+    def __init__(self, coordinator: CtcDataUpdateCoordinator) -> None:
+        """Initialize the problem sensor."""
+        super().__init__(coordinator, "problem")
+
+    @property
+    def is_on(self) -> bool:
+        """Return true if at least one alarm is active."""
+        return self.coordinator.alarms.has_alarm
+
+    @property
+    def extra_state_attributes(self) -> dict[str, object]:
+        """List the active alarm and info-text codes."""
+        snapshot = self.coordinator.alarms
+        return {
+            "alarm_count": snapshot.alarm_count,
+            "alarm_codes": [f"E{alarm.code}" for alarm in snapshot.alarms],
+            "heat_pump_alarm_codes": [
+                f"E{alarm.code}" for alarm in snapshot.alarms if alarm.heat_pump
+            ],
+            "info_texts": [f"I{info.code}" for info in snapshot.infos],
+        }

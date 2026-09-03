@@ -13,7 +13,7 @@ to dispatch validated writes.
 
 from __future__ import annotations
 
-from modbus_connection.model import Component, enum, gauge
+from modbus_connection.model import Component, enum, gauge, integer
 
 from ._fields import ranged
 from .enums import DhwMode, ElPriceMode, ZoneMode
@@ -43,6 +43,11 @@ class ControlParameters(Component):
 
     # 1005 ElPriceMode: 1 = Low, 2 = Normal, 3 = High.
     el_price_mode = enum(1005, ElPriceMode, writable=True)
+    # 1006 Extra DHW: write 1 to force a hot-water top-up. Undocumented beyond the
+    # name; confirmed on a real i360H to be a plain trigger that the controller
+    # drops after the usual <5 min unless re-asserted. Write 0 (or just stop
+    # re-asserting) to end it.
+    extra_dhw = integer(1006, signed=False, writable=ranged(0, 1))
     # 1007 DHW Mode: 0 = Economy, 1 = Normal, 2 = Comfort.
     dhw_mode = enum(1007, DhwMode, writable=True)
     # 1010 Setpoint heat HC1, degrees Celsius (Factor 0,1).

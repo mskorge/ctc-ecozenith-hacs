@@ -26,7 +26,8 @@
   "entity": {
     "binary_sensor": {
       "radiator_pump": { "name": "Radiator pump" },
-      "dhw_circulation": { "name": "Hot water circulation" }
+      "dhw_circulation": { "name": "Hot water circulation" },
+      "problem": { "name": "Problem" }
     },
     "climate": {
       "heating_circuit_1": { "name": "Heating circuit 1" }
@@ -115,7 +116,11 @@
       "radiator_pump_setting": { "name": "Radiator pump setting" },
       "hs1_inclination": { "name": "Heating curve slope" },
       "hs1_adjustment": { "name": "Heating curve adjustment" },
-      "vacation_days": { "name": "Vacation days remaining" }
+      "vacation_days": { "name": "Vacation days remaining" },
+      "active_alarm": { "name": "Active alarm" }
+    },
+    "switch": {
+      "extra_hot_water": { "name": "Extra hot water" }
     },
     "water_heater": {
       "dhw": { "name": "Hot water" }
@@ -130,6 +135,9 @@
     },
     "set_dhw_mode_failed": {
       "message": "Failed to change the hot water mode."
+    },
+    "set_extra_hot_water_failed": {
+      "message": "Failed to trigger extra hot water."
     },
     "write_failed": {
       "message": "Failed to send {name} to the CTC EcoZenith unit."
