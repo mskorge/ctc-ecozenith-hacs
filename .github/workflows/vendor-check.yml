@@ -1,0 +1,41 @@
+name: Vendored library
+
+# Manual only until ctc-ecozenith has a published repository with release tags.
+# Once it does, add the push/pull_request triggers back and keep CTC_ECOZENITH_REF
+# in step with the tag re-vendored into custom_components/ctc_ecozenith/vendor.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # Bump this when you re-vendor a new ctc-ecozenith release.
+  CTC_ECOZENITH_REF: "v0.1.0"
+
+jobs:
+  vendor-in-sync:
+    name: Vendored ctc_ecozenith matches the pinned release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Checkout ctc-ecozenith at the pinned ref
+        uses: actions/checkout@v6
+        with:
+          repository: mskorge/ctc-ecozenith
+          ref: ${{ env.CTC_ECOZENITH_REF }}
+          path: .ctc-ecozenith-src
+          persist-credentials: false
+
+      - name: Re-vendor and diff
+        run: |
+          ./scripts/vendor .ctc-ecozenith-src
+          rm -rf .ctc-ecozenith-src
+          if ! git diff --exit-code custom_components/ctc_ecozenith/vendor; then
+            echo "::error::vendored copy is stale - run scripts/vendor and commit the result"
+            exit 1
+          fi

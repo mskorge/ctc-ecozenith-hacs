@@ -1,0 +1,37 @@
+name: Release
+
+on:
+  release:
+    types:
+      - published
+
+permissions: {}
+
+jobs:
+  release:
+    name: Publish release assets
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Stamp the manifest version from the release tag
+        shell: bash
+        run: |
+          yq -i -o json '.version = "${{ github.event.release.tag_name }}"' \
+            custom_components/ctc_ecozenith/manifest.json
+
+      - name: ZIP the integration directory
+        shell: bash
+        run: |
+          cd custom_components/ctc_ecozenith
+          zip -r ctc_ecozenith.zip ./
+
+      - name: Upload the ZIP to the release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: custom_components/ctc_ecozenith/ctc_ecozenith.zip

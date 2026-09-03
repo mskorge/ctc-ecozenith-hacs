@@ -1,0 +1,12 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:best-practices"],
+  "minimumReleaseAge": "3 days",
+  "packageRules": [
+    {
+      "description": "Home Assistant must match the homeassistant key in hacs.json",
+      "matchPackageNames": ["homeassistant"],
+      "enabled": false
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+name: "Bug report"
+description: "Report a problem with the CTC EcoZenith i360 integration"
+body:
+  - type: markdown
+    attributes:
+      value: Please search existing issues before opening a new one.
+  - type: textarea
+    attributes:
+      label: "What happened"
+      description: "A clear description of the problem, and what you expected instead."
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: "Reproduction steps"
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: "CTC model / display software version"
+      placeholder: "EcoZenith i360H, display sw 2026.xx"
+  - type: input
+    attributes:
+      label: "Integration version"
+  - type: textarea
+    attributes:
+      label: "Debug logs"
+      description: "Everything logged under custom_components.ctc_ecozenith from Home Assistant startup to the problem."
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: "Diagnostics dump"
+      description: "Attach the integration's diagnostics download (it includes the raw register image)."

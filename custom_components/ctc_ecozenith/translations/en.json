@@ -1,0 +1,138 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "description": "Enter the connection details for the CTC EcoZenith i360 BMS Modbus interface.",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "unit": "Unit ID"
+        },
+        "data_description": {
+          "host": "Hostname or IP address of the heat pump's display (Modbus TCP, requires a 3-port display).",
+          "port": "TCP port of the Modbus interface (usually 502).",
+          "unit": "Modbus station address of the CTC controller (default 1)."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect",
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "already_configured": "Device is already configured"
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "radiator_pump": { "name": "Radiator pump" },
+      "dhw_circulation": { "name": "Hot water circulation" }
+    },
+    "climate": {
+      "heating_circuit_1": { "name": "Heating circuit 1" }
+    },
+    "select": {
+      "el_price_mode": {
+        "name": "Electricity price mode",
+        "state": {
+          "auto": "Auto (controller decides)",
+          "low": "Low",
+          "normal": "Normal",
+          "high": "High"
+        }
+      }
+    },
+    "sensor": {
+      "outdoor_temperature": { "name": "Outdoor temperature" },
+      "return_temperature": { "name": "Return temperature" },
+      "radiator_water_temperature": { "name": "Radiator water temperature" },
+      "hs1_primary_flow_temperature": { "name": "Heating circuit 1 primary flow temperature" },
+      "hs1_primary_flow_setpoint": { "name": "Heating circuit 1 primary flow setpoint" },
+      "hs1_room_temperature": { "name": "Heating circuit 1 room temperature" },
+      "dhw_temperature": { "name": "Hot water temperature" },
+      "dhw_upper_temperature": { "name": "Hot water temperature (upper)" },
+      "dhw_lower_temperature": { "name": "Hot water temperature (lower)" },
+      "dhw_outlet_setpoint": { "name": "Hot water outlet setpoint" },
+      "dhw_stop_temperature": { "name": "Hot water stop temperature" },
+      "dhw_lower_tank_setpoint": { "name": "Lower tank setpoint" },
+      "hp1_supply_temperature": { "name": "Heat pump supply temperature" },
+      "hp1_return_temperature": { "name": "Heat pump return temperature" },
+      "hp1_discharge_temperature": { "name": "Heat pump discharge temperature" },
+      "hp1_outdoor_temperature": { "name": "Heat pump outdoor temperature" },
+      "system_status": {
+        "name": "System status",
+        "state": {
+          "hp_upper": "Heat pump, upper tank",
+          "hp_lower": "Heat pump, lower tank",
+          "add": "Additional heat",
+          "hp_add": "Heat pump + additional heat",
+          "hc": "Heating",
+          "dhw": "Hot water",
+          "pool": "Pool",
+          "off": "Off",
+          "heating_mix": "Heating (mixed)",
+          "wood": "Wood",
+          "dhw_hc": "Hot water / heating",
+          "cooling": "Cooling",
+          "swap": "Changeover"
+        }
+      },
+      "hp1_status": {
+        "name": "Heat pump status",
+        "state": {
+          "start_delay": "Off, start delay",
+          "ready_to_start": "Off, ready to start",
+          "wait_for_flow": "Waiting for flow",
+          "heating": "Heating",
+          "defrost": "Defrosting",
+          "cooling": "Cooling",
+          "blocked": "Off, blocked",
+          "alarm": "Off, alarm",
+          "function_test": "Function test",
+          "not_defined": "Not defined",
+          "compressor_not_enabled": "Compressor not enabled",
+          "communication_error": "Communication error",
+          "charge_dhw": "Charging hot water"
+        }
+      },
+      "hs1_shunt_state": {
+        "name": "Heating circuit 1 shunt state",
+        "state": {
+          "closed": "Closed",
+          "inactive": "Inactive",
+          "open": "Open"
+        }
+      },
+      "hp1_charge_pump": { "name": "Heat pump charge pump" },
+      "hp1_brine_pump": { "name": "Heat pump brine pump" },
+      "hp1_fan": { "name": "Heat pump fan" },
+      "dhw_capacity": { "name": "Hot water capacity" },
+      "hp1_power": { "name": "Heat pump power" },
+      "immersion_heater_power": { "name": "Immersion heater power" },
+      "hp1_current_rps": { "name": "Compressor speed" },
+      "degree_minutes": { "name": "Degree minutes" },
+      "hp1_primary_flow": { "name": "Primary system flow" },
+      "radiator_pump_setting": { "name": "Radiator pump setting" },
+      "hs1_inclination": { "name": "Heating curve slope" },
+      "hs1_adjustment": { "name": "Heating curve adjustment" },
+      "vacation_days": { "name": "Vacation days remaining" }
+    },
+    "water_heater": {
+      "dhw": { "name": "Hot water" }
+    }
+  },
+  "exceptions": {
+    "set_el_price_mode_failed": {
+      "message": "Failed to change the electricity price mode."
+    },
+    "set_hvac_mode_failed": {
+      "message": "Failed to change the heating circuit mode."
+    },
+    "set_dhw_mode_failed": {
+      "message": "Failed to change the hot water mode."
+    },
+    "write_failed": {
+      "message": "Failed to send {name} to the CTC EcoZenith unit."
+    }
+  }
+}

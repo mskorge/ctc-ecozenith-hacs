@@ -1,0 +1,16 @@
+# https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+# Disabled in favour of Renovate (renovate.json). Rename to dependabot.yml to use.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    ignore:
+      # Must match the homeassistant key in hacs.json.
+      - dependency-name: "homeassistant"

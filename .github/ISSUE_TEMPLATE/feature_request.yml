@@ -1,0 +1,20 @@
+name: "Feature request"
+description: "Suggest an improvement to the CTC EcoZenith i360 integration"
+body:
+  - type: markdown
+    attributes:
+      value: Please search existing requests before opening a new one.
+  - type: textarea
+    attributes:
+      label: "What problem would this solve?"
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: "Describe the solution you'd like"
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: "Additional context"
+      description: "Relevant registers from the CTC BMS document (16260016), screenshots, etc."
