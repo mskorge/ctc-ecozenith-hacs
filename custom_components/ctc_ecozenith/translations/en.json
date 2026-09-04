@@ -108,6 +108,7 @@
       "hp1_brine_pump": { "name": "Heat pump brine pump" },
       "hp1_fan": { "name": "Heat pump fan" },
       "dhw_capacity": { "name": "Hot water capacity" },
+      "dhw_capacity_estimate": { "name": "Hot water capacity (estimated)" },
       "hp1_power": { "name": "Heat pump power" },
       "immersion_heater_power": { "name": "Immersion heater power" },
       "hp1_current_rps": { "name": "Compressor speed" },

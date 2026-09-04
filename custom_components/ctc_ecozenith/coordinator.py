@@ -55,6 +55,7 @@ class CtcDataUpdateCoordinator(DataUpdateCoordinator[None]):
         self._overrides: dict[_OverrideKey, Any] = {}
         self._cancel_keepalive: Callable[[], None] | None = None
         self._alarms = AlarmSnapshot()
+        self._elspot_seen = False
         entry.async_on_unload(self._stop_keepalive)
 
     @property
@@ -66,6 +67,30 @@ class CtcDataUpdateCoordinator(DataUpdateCoordinator[None]):
     def device(self) -> CtcEcoZenith:
         """Return the library device object (read-only access)."""
         return self._client.device
+
+    @property
+    def overrides(self) -> dict[_OverrideKey, Any]:
+        """Return a copy of the control-parameter overrides currently held."""
+        return dict(self._overrides)
+
+    @property
+    def keepalive_active(self) -> bool:
+        """Whether the 1000-series keep-alive loop is currently running."""
+        return self._cancel_keepalive is not None
+
+    @property
+    def elspot_price_available(self) -> bool:
+        """Whether the unit has ever reported a live spot electricity price.
+
+        Latched: once seen it stays ``True`` for the life of the entry, so the
+        electricity-price-mode ``select`` does not flap in and out of
+        availability when the price happens to land on a whole number. Control
+        parameter 1005 only does anything on a unit fed a spot price; without
+        the feature the ``select`` is offered as unavailable rather than writing
+        an override the controller would show as "[I048] Extern styrning" and
+        then drop.
+        """
+        return self._elspot_seen
 
     def held(self, component: str, field: str) -> Any | None:
         """Return the value currently held for ``component.field``, or ``None``.
@@ -117,6 +142,10 @@ class CtcDataUpdateCoordinator(DataUpdateCoordinator[None]):
             await self._client.async_update()
         except CtcApiError as err:
             raise UpdateFailed(str(err)) from err
+
+        readings = self._client.device.readings
+        if readings.elspot_price_amount or readings.elspot_price_fraction:
+            self._elspot_seen = True
 
         # The 65xxx alarm range is outside the register windows proven on the
         # reference unit. Keep its failure isolated: a controller that rejects it

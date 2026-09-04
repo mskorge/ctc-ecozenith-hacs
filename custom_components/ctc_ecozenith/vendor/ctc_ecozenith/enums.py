@@ -14,6 +14,7 @@ __all__ = [
     "ElPriceMode",
     "HeatPumpStatus",
     "HeatingSystemStatus",
+    "SgMode",
     "ShuntState",
     "SystemStatus",
     "ZoneMode",
@@ -101,3 +102,18 @@ class ElPriceMode(IntEnum):
     LOW = 1
     NORMAL = 2
     HIGH = 3
+
+
+class SgMode(IntEnum):
+    """Smart-grid / spot-price control state (register 62301 ``SGMode``).
+
+    ``NORMAL`` (0) is what a unit with no active price control reports; the other
+    states only appear once the controller is being fed a live electricity
+    price. Read-only - the equivalent override input is control parameter 1005
+    (:class:`ElPriceMode`).
+    """
+
+    NORMAL = 0  # documented as "None/Normal"
+    BLOCK = 1
+    LOW_PRICE = 2
+    HIGH_CAPACITY = 3

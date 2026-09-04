@@ -3,6 +3,12 @@
 One select: ``el_price_mode`` drives control parameter 1005. Its first option,
 ``auto``, releases the override and lets the controller's own logic decide;
 picking a real mode asserts it and the coordinator keeps re-writing it.
+
+The select is offered as unavailable on a unit that has never reported a spot
+electricity price (see ``coordinator.elspot_price_available``): control
+parameter 1005 only does something when the controller is being fed a price,
+and asserting it otherwise just lights "[I048] Extern styrning" on the panel
+for five minutes before the controller drops it.
 """
 
 from __future__ import annotations
@@ -55,6 +61,11 @@ class CtcElPriceModeSelect(CtcEcoZenithEntity, SelectEntity, RestoreEntity):
         super().__init__(coordinator, _FIELD)
 
     @property
+    def available(self) -> bool:
+        """Unavailable until the unit reports a live spot price (latched)."""
+        return super().available and self.coordinator.elspot_price_available
+
+    @property
     def current_option(self) -> str:
         """Return the held override, or ``auto`` when none is asserted."""
         held = self.coordinator.held(CONTROL_PARAMETERS, _FIELD)
@@ -66,7 +77,11 @@ class CtcElPriceModeSelect(CtcEcoZenithEntity, SelectEntity, RestoreEntity):
         """Re-assert a restored override so it survives a Home Assistant restart."""
         await super().async_added_to_hass()
         last = await self.async_get_last_state()
-        if last is None or last.state in (None, _OPTION_AUTO, "unknown", "unavailable"):
+        if (
+            last is None
+            or last.state in (None, _OPTION_AUTO, "unknown", "unavailable")
+            or not self.coordinator.elspot_price_available
+        ):
             return
         with suppress(HomeAssistantError, KeyError):
             await self.coordinator.async_write_control(

@@ -63,7 +63,10 @@ def _temperature(
 
 
 def _percent(
-    key: str, value_fn: Callable[[CtcEcoZenith], StateType]
+    key: str,
+    value_fn: Callable[[CtcEcoZenith], StateType],
+    *,
+    enabled: bool = True,
 ) -> CtcSensorEntityDescription:
     return CtcSensorEntityDescription(
         key=key,
@@ -71,6 +74,7 @@ def _percent(
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=0,
+        entity_registry_enabled_default=enabled,
         value_fn=value_fn,
     )
 
@@ -165,6 +169,14 @@ SENSORS: tuple[CtcSensorEntityDescription, ...] = (
     _percent("hp1_brine_pump", lambda d: d.readings.hp1_brine_pump),
     _percent("hp1_fan", lambda d: d.readings.hp1_fan),
     _percent("dhw_capacity", lambda d: d.readings.dhw_capacity),
+    # Temperature-derived stand-in for `dhw_capacity` (register 62279), which
+    # stalls for long periods while the tank is charging. Empirically fitted to
+    # this unit - off by default; enable it if 62279 is unreliable on yours.
+    _percent(
+        "dhw_capacity_estimate",
+        lambda d: d.readings.dhw_capacity_estimate,
+        enabled=False,
+    ),
     # Power
     _power("hp1_power", lambda d: d.readings.hp1_power),
     _power("immersion_heater_power", lambda d: d.readings.immersion_heater_power),

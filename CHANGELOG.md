@@ -4,6 +4,54 @@ All notable changes to this integration are documented here. Versions follow
 [semantic versioning](https://semver.org/); the version in
 `custom_components/ctc_ecozenith/manifest.json` matches the release tag.
 
+## 0.1.3 - 2026-09-04
+
+### Changed (potentially breaking)
+
+- **The `water_heater` (Hot water) entity's state changes for everyone on
+  upgrade.** It used to mirror the panel's DHW mode (`economy` / `normal` /
+  `comfort`) read back from register 61500. It now reports **`auto`** whenever
+  Home Assistant is not actively forcing a mode — which, for anyone who never
+  set it through HA, is always. Dashboards and automations that compare this
+  entity's state or `operation_mode` attribute to `"comfort"` etc. will stop
+  matching until updated. The panel's own DHW mode is still in the diagnostics
+  dump and the library `settings`. This mirrors how `climate` already reports
+  `AUTO` when not overridden.
+
+### Added
+
+- **`water_heater` — `auto` operation mode.** Selecting `auto` *releases* the
+  DHW-mode override (control parameter 1007) and lets the panel setting decide,
+  the same way `climate`'s `AUTO` already works. Previously every DHW selection
+  was a permanent override with no way to hand control back, and a restart would
+  even re-assert whatever mode the panel happened to be in — which showed on the
+  panel as "[I048] Extern styrning". After upgrading, set the hot-water entity
+  to `auto` to stop the re-assert.
+- Electricity-price-mode `select` is now **unavailable on a unit that has never
+  reported a spot electricity price** (registers `62302` / `62303` both zero).
+  Control parameter `1005` only does something when the controller is fed a
+  price; asserting it otherwise just lit "[I048] Extern styrning" on the panel
+  for five minutes. The check latches on first sighting so the entity does not
+  flap when the price lands on a whole number.
+- Diagnostics dump now includes `control_overrides` (which 1000-series values
+  Home Assistant is currently holding), `keepalive_active`, and an `elspot`
+  block (`SGMode` 62301, the raw price words, the combined price, and whether
+  the price-mode select is available) — the quickest way to see what is keeping
+  "[I048] Extern styrning" lit.
+- **`sensor` — Hot water capacity (estimated)** (disabled by default). A
+  temperature-derived stand-in for `Hot water capacity` (register 62279), which
+  stalls for long stretches while the tank is charging. Computed from the
+  upper / lower tank temperatures and the stop temperature with constants
+  empirically fitted to the reference unit — enable it (and, on another unit,
+  expect to re-fit) only if the real 62279 sensor is unreliable for you.
+- Library `readings`: `sg_mode` (register 62301 `SGMode`), `elspot_price_amount`
+  / `elspot_price_fraction` (62302 / 62303) with combined `elspot_price`, and
+  `dhw_capacity_estimate`.
+
+### Changed
+
+- Vendored `ctc_ecozenith` library bumped to `v0.1.3`.
+
 ## 0.1.2 - 2026-09-03
 
 ### Added

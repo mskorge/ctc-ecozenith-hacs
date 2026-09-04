@@ -1,9 +1,10 @@
 """Water heater platform for the CTC EcoZenith i360 custom integration.
 
 One entity for domestic hot water. ``operation_mode`` drives control parameter
-1007 (DHW comfort mode). The controller always runs in one of the three modes,
-so every selection is an override and there is no "release" option - the
-coordinator simply keeps re-asserting whatever was last chosen.
+1007 (DHW comfort mode). The first option, ``auto``, releases the override and
+lets the controller's own logic decide; picking ``economy`` / ``normal`` /
+``comfort`` asserts it and the coordinator keeps re-writing it every keep-alive
+interval until ``auto`` is picked again.
 """
 
 from __future__ import annotations
@@ -33,7 +34,9 @@ if TYPE_CHECKING:
 PARALLEL_UPDATES = 0
 
 _FIELD = "dhw_mode"
-_OPERATIONS = [member.name.lower() for member in DhwMode]
+_OPTION_AUTO = "auto"
+_MODES = [member.name.lower() for member in DhwMode]
+_OPERATIONS = [_OPTION_AUTO, *_MODES]
 
 
 async def async_setup_entry(
@@ -64,21 +67,29 @@ class CtcDomesticHotWater(CtcEcoZenithEntity, WaterHeaterEntity, RestoreEntity):
         return self.coordinator.device.readings.dhw_temperature
 
     @property
-    def current_operation(self) -> str | None:
-        """Return the held DHW mode, or the panel read-back as a fallback."""
+    def current_operation(self) -> str:
+        """Return the held DHW mode, or ``auto`` when no override is asserted.
+
+        The controller is always in one of the three real modes, but this
+        entity's state reflects only what Home Assistant is forcing - ``auto``
+        means "not overridden", i.e. the panel setting is left to decide. The
+        panel's own value is in the diagnostics dump / library ``settings``.
+        """
         held = self.coordinator.held(CONTROL_PARAMETERS, _FIELD)
-        mode = (
-            DhwMode(int(held))
-            if held is not None
-            else self.coordinator.device.settings.dhw_mode
-        )
-        return mode.name.lower() if mode is not None else None
+        if held is None:
+            return _OPTION_AUTO
+        return DhwMode(int(held)).name.lower()
 
     async def async_added_to_hass(self) -> None:
         """Re-assert a restored DHW mode so it survives a restart."""
         await super().async_added_to_hass()
         last = await self.async_get_last_state()
-        if last is None or last.state not in _OPERATIONS:
+        if last is None or last.state in (
+            None,
+            _OPTION_AUTO,
+            "unknown",
+            "unavailable",
+        ):
             return
         with suppress(HomeAssistantError, KeyError):
             await self.coordinator.async_write_control(
@@ -86,11 +97,14 @@ class CtcDomesticHotWater(CtcEcoZenithEntity, WaterHeaterEntity, RestoreEntity):
             )
 
     async def async_set_operation_mode(self, operation_mode: str) -> None:
-        """Hold a new DHW comfort mode."""
+        """Hold a DHW comfort mode, or release the override for ``auto``."""
         try:
-            await self.coordinator.async_write_control(
-                CONTROL_PARAMETERS, _FIELD, DhwMode[operation_mode.upper()]
-            )
+            if operation_mode == _OPTION_AUTO:
+                await self.coordinator.async_release_control(CONTROL_PARAMETERS, _FIELD)
+            else:
+                await self.coordinator.async_write_control(
+                    CONTROL_PARAMETERS, _FIELD, DhwMode[operation_mode.upper()]
+                )
         except (HomeAssistantError, KeyError) as err:
             raise HomeAssistantError(
                 translation_domain=DOMAIN, translation_key="set_dhw_mode_failed"

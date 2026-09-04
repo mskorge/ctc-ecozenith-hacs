@@ -37,10 +37,16 @@ Home Assistant is running.
 
 - `climate` heating-circuit `AUTO` mode **releases** the zone-mode and setpoint
   overrides and lets the heat curve decide; `HEAT` / `OFF` hold the circuit.
+- `water_heater` hot-water `auto` mode **releases** the DHW-mode override;
+  `economy` / `normal` / `comfort` hold it.
 - `select` electricity-price mode `Auto (controller decides)` releases that
-  override.
-- After a Home Assistant restart, each entity re-asserts its last state (which
-  can override a change you made on the CTC panel while HA was down).
+  override. The select is **unavailable on a unit that never reports a spot
+  price** (registers 62302/62303 stay at zero) - control parameter 1005 does
+  nothing there.
+- After a Home Assistant restart, each entity re-asserts its last *non-`auto`*
+  state (which can override a change you made on the CTC panel while HA was
+  down). Leaving every writable entity on `auto` / `AUTO` means HA writes
+  nothing to the 1000-series and the panel's "[I048] Extern styrning" clears.
 
 The 61500-series user-settings registers are exposed **read-only** - the CTC
 manual warns of a hard write-cycle limit on that range.
