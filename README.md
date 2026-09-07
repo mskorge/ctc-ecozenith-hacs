@@ -23,6 +23,7 @@ prepared for Home Assistant core.
 | --- | --- |
 | `sensor` | outdoor / return / radiator / primary-flow / room / DHW temperatures, system & heat-pump status, shunt state, charge / brine pump & fan output, compressor speed, degree minutes, power (heat pump, immersion heater), DHW capacity, plus read-only panel settings (heating-curve slope / adjustment, radiator-pump setting, vacation days) |
 | `binary_sensor` | radiator pump, hot-water circulation |
+| `button` | Release control |
 | `climate` | heating circuit 1 |
 | `water_heater` | hot water |
 | `select` | electricity price mode |
@@ -47,6 +48,14 @@ Home Assistant is running.
   state (which can override a change you made on the CTC panel while HA was
   down). Leaving every writable entity on `auto` / `AUTO` means HA writes
   nothing to the 1000-series and the panel's "[I048] Extern styrning" clears.
+- The **Release control** `button` does all of that in one press: it drops
+  every held override and stops the keep-alive (it writes nothing - the
+  controller reverts within five minutes). Use it to find out whether HA is
+  what is keeping "[I048] Extern styrning" lit: if the message is still there
+  ~5 minutes after pressing it, the source is outside this integration - a
+  bound **myUpLink** cloud connection or a wired **SG Ready** input at the
+  terminal block. The diagnostics download's `control_overrides` /
+  `keepalive_active` fields show exactly what HA is holding.
 
 The 61500-series user-settings registers are exposed **read-only** - the CTC
 manual warns of a hard write-cycle limit on that range.

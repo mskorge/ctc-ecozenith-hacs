@@ -29,6 +29,9 @@
       "dhw_circulation": { "name": "Hot water circulation" },
       "problem": { "name": "Problem" }
     },
+    "button": {
+      "release_control": { "name": "Release control" }
+    },
     "climate": {
       "heating_circuit_1": { "name": "Heating circuit 1" }
     },

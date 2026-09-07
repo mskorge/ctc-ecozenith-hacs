@@ -115,6 +115,19 @@ class CtcDataUpdateCoordinator(DataUpdateCoordinator[None]):
         if not self._overrides:
             self._stop_keepalive()
 
+    async def async_release_all(self) -> None:
+        """Drop every held control-parameter override and stop the keep-alive.
+
+        Writes nothing to the unit - the controller reverts each released
+        parameter to its panel setting within five minutes. Listeners are
+        notified straight away so every writable entity re-reports its
+        released state (``auto`` / ``off``), which is also what
+        ``RestoreEntity`` persists for the next restart.
+        """
+        self._overrides.clear()
+        self._stop_keepalive()
+        self.async_update_listeners()
+
     def _start_keepalive(self) -> None:
         if self._cancel_keepalive is None:
             self._cancel_keepalive = async_track_time_interval(

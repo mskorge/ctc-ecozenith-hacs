@@ -4,6 +4,39 @@ All notable changes to this integration are documented here. Versions follow
 [semantic versioning](https://semver.org/); the version in
 `custom_components/ctc_ecozenith/manifest.json` matches the release tag.
 
+## 0.1.4 - 2026-09-07
+
+### Added
+
+- **`button` — Release control.** One press drops every held 1000-series
+  override at once and stops the keep-alive; it is a shortcut for setting
+  `climate` to `AUTO`, `water_heater` and `select` to `auto`, and the Extra
+  hot water `switch` off. It **writes nothing** to the unit — the controller
+  reverts each parameter to its panel setting within five minutes. The button
+  stays available even when the unit is unreachable, which is exactly when you
+  want to stop the keep-alive retrying.
+- Use it to tell whether Home Assistant is what keeps "[I048] Extern styrning"
+  lit on the panel: press it and wait ~5 minutes. If the message clears, HA
+  was the source. If it does not, the source is **outside this integration** —
+  most often a bound **myUpLink** cloud connection or a wired **SG Ready**
+  input at the controller's terminal block — and neither this button nor any
+  entity state can clear it; disconnect that interface at the panel / wiring.
+  The diagnostics download's `control_overrides` and `keepalive_active` fields
+  show exactly what HA is holding.
+
+### Note
+
+- If "[I048] Extern styrning" persisted after 0.1.3 despite setting the
+  hot-water entity to `auto`, download the diagnostics and check
+  `control_overrides` / `keepalive_active` first. If `control_overrides`
+  lists `hs1_room_setpoint` or `hs1_zone_mode`, the **`climate`** entity is
+  the holder — dragging its target temperature once holds control parameter
+  1010, which keeps the entity in `HEAT` and re-asserts on every restart;
+  set **Heating circuit 1** to `AUTO` (you do not need this release for
+  that). If `control_overrides` is empty and `keepalive_active` is `false`,
+  Home Assistant is writing nothing and the source is outside this
+  integration (myUpLink or a wired SG Ready input).
+
 ## 0.1.3 - 2026-09-04
 
 ### Changed (potentially breaking)
