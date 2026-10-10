@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from homeassistant.config_entries import ConfigEntry
 
 if TYPE_CHECKING:
-    from modbus_connection.tmodbus import ModbusConnection
+    from modbus_connection import ModbusUnit
 
     from .api import CtcApiClient
     from .coordinator import CtcDataUpdateCoordinator
@@ -21,5 +21,5 @@ class CtcData:
     """Data held on a loaded CTC EcoZenith config entry."""
 
     client: CtcApiClient
-    connection: ModbusConnection
+    unit: ModbusUnit
     coordinator: CtcDataUpdateCoordinator

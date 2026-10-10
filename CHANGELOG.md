@@ -4,6 +4,26 @@ All notable changes to this integration are documented here. Versions follow
 [semantic versioning](https://semver.org/); the version in
 `custom_components/ctc_ecozenith/manifest.json` matches the release tag.
 
+## 0.2.0 - 2026-10-10
+
+### Changed
+
+- **Requires Home Assistant 2026.9 or newer.** The integration no longer opens
+  its own Modbus connection. It asks the built-in `modbus` integration for a
+  unit on a shared connection (`async_get_unit`, and `async_get_temporary_unit`
+  for the config-flow probe), as the
+  [Modbus developer docs](https://developers.home-assistant.io/docs/modbus/introduction)
+  recommend. Anything else talking to the same CTC address now shares one link
+  instead of opening a competing socket. No `modbus:` YAML is needed.
+- `modbus-connection` and `tmodbus` now come from Home Assistant's own `modbus`
+  integration; the manifest keeps only a `modbus-connection` version floor.
+- Dev tooling targets Home Assistant 2026.10.0 and Python 3.14.
+
+### Note
+
+- No entity, unique ID or config-entry change: upgrading needs no
+  reconfiguration. The vendored `ctc_ecozenith` library is unchanged (v0.1.3).
+
 ## 0.1.4 - 2026-09-07
 
 ### Added

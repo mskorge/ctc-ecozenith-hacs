@@ -147,7 +147,7 @@ class CtcHeatingCircuitClimate(CtcEcoZenithEntity, ClimateEntity, RestoreEntity)
                     await self.coordinator.async_write_control(
                         CONTROL_PARAMETERS, _SETPOINT_FIELD, float(target)
                     )
-        except (HomeAssistantError, ValueError, KeyError):
+        except HomeAssistantError, ValueError, KeyError:
             pass
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:

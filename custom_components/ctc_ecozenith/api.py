@@ -7,8 +7,7 @@ imports below.
 
 from __future__ import annotations
 
-from modbus_connection import ModbusError, ModbusTcpParams
-from modbus_connection.tmodbus import ModbusConnection
+from modbus_connection import ModbusError, ModbusTcpParams, ModbusUnit
 
 from .vendor.ctc_ecozenith import (
     HS_SETPOINT_MAX,
@@ -29,8 +28,8 @@ __all__ = [
     "CtcApiClient",
     "CtcApiError",
     "CtcEcoZenith",
-    "build_connection",
     "software_version",
+    "tcp_params",
 ]
 
 
@@ -38,17 +37,17 @@ class CtcApiError(ModbusError):
     """Raised for any CTC EcoZenith communication failure."""
 
 
-def build_connection(host: str, port: int) -> ModbusConnection:
-    """Create (but do not open) a Modbus TCP connection to the unit."""
-    return ModbusConnection(ModbusTcpParams(host=host, port=port))
+def tcp_params(host: str, port: int) -> ModbusTcpParams:
+    """Return the link settings for the unit's Modbus TCP interface."""
+    return ModbusTcpParams(host=host, port=port)
 
 
 class CtcApiClient:
-    """One :class:`CtcEcoZenith` device bound to one Modbus unit on a connection."""
+    """One :class:`CtcEcoZenith` device bound to one Modbus unit."""
 
-    def __init__(self, connection: ModbusConnection, unit_id: int) -> None:
-        """Bind the client to ``unit_id`` on ``connection``."""
-        self._device = CtcEcoZenith(connection.for_unit(unit_id))
+    def __init__(self, unit: ModbusUnit) -> None:
+        """Bind the client to ``unit``."""
+        self._device = CtcEcoZenith(unit)
 
     @property
     def device(self) -> CtcEcoZenith:

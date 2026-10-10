@@ -6,8 +6,10 @@ from typing import TYPE_CHECKING, Any
 
 import voluptuous as vol
 
+from homeassistant.components.modbus import async_get_temporary_unit
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.const import CONF_HOST, CONF_PORT
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.selector import (
     NumberSelector,
     NumberSelectorConfig,
@@ -15,7 +17,7 @@ from homeassistant.helpers.selector import (
     TextSelector,
 )
 
-from .api import CtcApiClient, CtcApiError, build_connection
+from .api import CtcApiClient, CtcApiError, tcp_params
 from .const import CONF_UNIT, DEFAULT_PORT, DOMAIN, LOGGER
 from .vendor.ctc_ecozenith import PRODUCT_TYPE
 
@@ -43,20 +45,20 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
 
 async def _check_connection(hass: HomeAssistant, data: dict[str, Any]) -> str | None:
     """Return an error key if the unit cannot be reached."""
-    connection = build_connection(data[CONF_HOST], data[CONF_PORT])
+    params = tcp_params(data[CONF_HOST], data[CONF_PORT])
     try:
-        client = CtcApiClient(connection, data[CONF_UNIT])
-        product_type = await client.async_probe()
+        async with async_get_temporary_unit(hass, params, data[CONF_UNIT]) as unit:
+            product_type = await CtcApiClient(unit).async_probe()
         if PRODUCT_TYPE is not None and product_type != PRODUCT_TYPE:
             return "cannot_connect"
-    except CtcApiError:
+    except CtcApiError, HomeAssistantError:
+        # HomeAssistantError: the address is already in use with different link
+        # settings by another Modbus consumer.
         LOGGER.debug("Cannot connect to the CTC EcoZenith unit", exc_info=True)
         return "cannot_connect"
     except Exception:  # noqa: BLE001
         LOGGER.exception("Unexpected error validating the CTC EcoZenith connection")
         return "unknown"
-    finally:
-        await connection.close()
     return None
 
 

@@ -6,8 +6,10 @@ its **Building Management System (BMS)** Modbus TCP interface.
 This is the community-testable HACS build. It bundles the
 [`ctc-ecozenith`](https://github.com/mskorge/ctc-ecozenith) device library
 (vendored under `custom_components/ctc_ecozenith/vendor/`) so no PyPI release is
-required, and it opens its own Modbus connection. A leaner version is being
-prepared for Home Assistant core.
+required. The Modbus link comes from Home Assistant's built-in `modbus`
+integration as a shared connection, so it needs **Home Assistant 2026.9 or
+newer** but no `modbus:` YAML. A leaner version is being prepared for Home
+Assistant core.
 
 ## Installation
 

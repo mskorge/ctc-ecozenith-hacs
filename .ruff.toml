@@ -1,5 +1,5 @@
 line-length = 88
-target-version = "py313"
+target-version = "py314"
 
 # The vendored device library is a verbatim third-party copy; lint it upstream.
 extend-exclude = ["custom_components/ctc_ecozenith/vendor"]
