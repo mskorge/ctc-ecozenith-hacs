@@ -4,6 +4,19 @@ All notable changes to this integration are documented here. Versions follow
 [semantic versioning](https://semver.org/); the version in
 `custom_components/ctc_ecozenith/manifest.json` matches the release tag.
 
+## 0.2.1 - 2026-10-12
+
+### Changed
+
+- **Hot water capacity (estimated)** now uses the "hybrid V2" calculation. It
+  reports the controller's own `Hot water capacity` (register 62279) whenever
+  that has a value, and only falls back to the tank temperatures while 62279
+  drops out. The temperature fallback no longer applies the extra ×1.1076 top
+  gain, which overshot. While the charge pump runs, the fallback never shows
+  less than the last value 62279 reported, since a tank being charged does not
+  lose capacity. The entity ID and unique ID are unchanged, and the sensor is
+  still disabled by default.
+
 ## 0.2.0 - 2026-10-10
 
 ### Changed

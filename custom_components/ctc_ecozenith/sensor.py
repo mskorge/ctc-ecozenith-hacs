@@ -20,6 +20,7 @@ from homeassistant.const import (
     UnitOfTemperature,
     UnitOfVolumeFlowRate,
 )
+from homeassistant.core import callback
 
 from .entity import CtcEcoZenithEntity
 from .vendor.ctc_ecozenith import CtcEcoZenith, HeatPumpStatus, ShuntState, SystemStatus
@@ -33,6 +34,14 @@ if TYPE_CHECKING:
     from .data import CtcConfigEntry
 
 PARALLEL_UPDATES = 0
+
+# Temperature fallback for the estimated hot-water capacity. SCALE / OFFSET were
+# least-squares fitted against the reference i360H's own register 62279 and are
+# unit-specific. Unlike the vendored Readings.dhw_capacity_estimate, no extra top
+# gain is applied: without it the fallback tracked 62279 better on this unit.
+_DHW_EST_T_MIN = 40.0
+_DHW_EST_SCALE = 0.9821701251125675
+_DHW_EST_OFFSET = -11.827660197557327
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -169,14 +178,8 @@ SENSORS: tuple[CtcSensorEntityDescription, ...] = (
     _percent("hp1_brine_pump", lambda d: d.readings.hp1_brine_pump),
     _percent("hp1_fan", lambda d: d.readings.hp1_fan),
     _percent("dhw_capacity", lambda d: d.readings.dhw_capacity),
-    # Temperature-derived stand-in for `dhw_capacity` (register 62279), which
-    # stalls for long periods while the tank is charging. Empirically fitted to
-    # this unit - off by default; enable it if 62279 is unreliable on yours.
-    _percent(
-        "dhw_capacity_estimate",
-        lambda d: d.readings.dhw_capacity_estimate,
-        enabled=False,
-    ),
+    # `dhw_capacity_estimate` is CtcDhwCapacityEstimateSensor below: it keeps the
+    # last register value between polls, which a value_fn cannot.
     # Power
     _power("hp1_power", lambda d: d.readings.hp1_power),
     _power("immersion_heater_power", lambda d: d.readings.immersion_heater_power),
@@ -248,8 +251,76 @@ async def async_setup_entry(
     entities: list[SensorEntity] = [
         CtcSensor(coordinator, description) for description in SENSORS
     ]
+    entities.append(CtcDhwCapacityEstimateSensor(coordinator))
     entities.append(CtcActiveAlarmSensor(coordinator))
     async_add_entities(entities)
+
+
+def _clamp_percent(value: float) -> float:
+    return min(max(value, 0.0), 100.0)
+
+
+def _dhw_temperature_capacity(device: CtcEcoZenith) -> float | None:
+    """Hot-water capacity % from the tank temperatures, or ``None``."""
+    readings = device.readings
+    upper = readings.dhw_upper_temperature
+    lower = readings.dhw_lower_temperature
+    target = readings.dhw_stop_temperature
+    if upper is None or lower is None or target is None:
+        return None
+    span = target - _DHW_EST_T_MIN
+    if span <= 0:
+        return None
+    # Weight the lower tank sensor more as the tank stratifies.
+    weight = min(max(0.5 + 0.06 * max(upper - lower, 0.0), 0.5), 1.1)
+    upper_gap = max(upper - _DHW_EST_T_MIN, 0.0)
+    lower_gap = max(lower - _DHW_EST_T_MIN, 0.0)
+    base = (upper_gap + weight * lower_gap) / (span * (1.0 + weight)) * 100.0
+    return _clamp_percent(_DHW_EST_SCALE * base + _DHW_EST_OFFSET)
+
+
+class CtcDhwCapacityEstimateSensor(CtcEcoZenithEntity, SensorEntity):
+    """Hot-water capacity %, kept alive while register 62279 drops out.
+
+    Register 62279 (``dhw_capacity``) is reported as-is whenever it has a value.
+    While it reads as faulted (raw 9999), the value comes from the tank
+    temperatures instead, and while the tank is charging it never falls below
+    the last value 62279 reported. Off by default; enable it if 62279 drops out
+    on your unit.
+    """
+
+    _attr_translation_key = "dhw_capacity_estimate"
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 0
+    _attr_entity_registry_enabled_default = False
+
+    def __init__(self, coordinator: CtcDataUpdateCoordinator) -> None:
+        """Initialize the estimated hot-water capacity sensor."""
+        super().__init__(coordinator, "dhw_capacity_estimate")
+        self._last_register: float | None = None
+        self._attr_native_value = self._compute()
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Recompute the value from the latest poll."""
+        self._attr_native_value = self._compute()
+        super()._handle_coordinator_update()
+
+    def _compute(self) -> float | None:
+        device = self.coordinator.device
+        register = device.readings.dhw_capacity
+        if register is not None:
+            self._last_register = round(_clamp_percent(register), 1)
+            return self._last_register
+        estimate = _dhw_temperature_capacity(device)
+        if estimate is None:
+            return None
+        charging = (device.readings.hp1_charge_pump or 0) > 0
+        if charging and self._last_register is not None:
+            # A tank that is being charged does not lose capacity.
+            estimate = max(estimate, self._last_register)
+        return round(estimate, 1)
 
 
 class CtcSensor(CtcEcoZenithEntity, SensorEntity):
