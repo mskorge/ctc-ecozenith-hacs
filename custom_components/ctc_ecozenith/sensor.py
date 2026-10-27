@@ -35,13 +35,15 @@ if TYPE_CHECKING:
 
 PARALLEL_UPDATES = 0
 
-# Temperature fallback for the estimated hot-water capacity. SCALE / OFFSET were
-# least-squares fitted against the reference i360H's own register 62279 and are
-# unit-specific. Unlike the vendored Readings.dhw_capacity_estimate, no extra top
-# gain is applied: without it the fallback tracked 62279 better on this unit.
-_DHW_EST_T_MIN = 40.0
-_DHW_EST_SCALE = 0.9821701251125675
-_DHW_EST_OFFSET = -11.827660197557327
+# Temperature continuation for the estimated hot-water capacity. Register 62279
+# goes quiet while the tank recharges after a deep draw and comes back at FULL
+# once the tank reaches its stop temperature. In between, the estimate carries
+# on from the last value 62279 reported, driven by the mean of the upper and
+# lower tank temperatures: down at DRAW_SLOPE % per degC while water is drawn,
+# and up along a straight line to FULL at the stop temperature while charging.
+# DRAW_SLOPE was read off three deep draws on the reference i360H (4.2-4.6).
+_DHW_EST_FULL = 99.9
+_DHW_EST_DRAW_SLOPE = 4.4
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -260,33 +262,24 @@ def _clamp_percent(value: float) -> float:
     return min(max(value, 0.0), 100.0)
 
 
-def _dhw_temperature_capacity(device: CtcEcoZenith) -> float | None:
-    """Hot-water capacity % from the tank temperatures, or ``None``."""
-    readings = device.readings
-    upper = readings.dhw_upper_temperature
-    lower = readings.dhw_lower_temperature
-    target = readings.dhw_stop_temperature
-    if upper is None or lower is None or target is None:
+def _dhw_mean_temperature(device: CtcEcoZenith) -> float | None:
+    """Mean of the upper and lower tank temperatures, or ``None``."""
+    upper = device.readings.dhw_upper_temperature
+    lower = device.readings.dhw_lower_temperature
+    if upper is None or lower is None:
         return None
-    span = target - _DHW_EST_T_MIN
-    if span <= 0:
-        return None
-    # Weight the lower tank sensor more as the tank stratifies.
-    weight = min(max(0.5 + 0.06 * max(upper - lower, 0.0), 0.5), 1.1)
-    upper_gap = max(upper - _DHW_EST_T_MIN, 0.0)
-    lower_gap = max(lower - _DHW_EST_T_MIN, 0.0)
-    base = (upper_gap + weight * lower_gap) / (span * (1.0 + weight)) * 100.0
-    return _clamp_percent(_DHW_EST_SCALE * base + _DHW_EST_OFFSET)
+    return (upper + lower) / 2.0
 
 
 class CtcDhwCapacityEstimateSensor(CtcEcoZenithEntity, SensorEntity):
     """Hot-water capacity %, kept alive while register 62279 drops out.
 
     Register 62279 (``dhw_capacity``) is reported as-is whenever it has a value.
-    While it reads as faulted (raw 9999), the value comes from the tank
-    temperatures instead, and while the tank is charging it never falls below
-    the last value 62279 reported. Off by default; enable it if 62279 drops out
-    on your unit.
+    While it reads as faulted (raw 9999), the estimate carries on from the last
+    value 62279 reported, following the tank temperatures: down as water is
+    drawn, and up while the tank charges, reaching full at the stop
+    temperature, where 62279 comes back. Off by default; enable it if 62279
+    drops out on your unit.
     """
 
     _attr_translation_key = "dhw_capacity_estimate"
@@ -298,7 +291,8 @@ class CtcDhwCapacityEstimateSensor(CtcEcoZenithEntity, SensorEntity):
     def __init__(self, coordinator: CtcDataUpdateCoordinator) -> None:
         """Initialize the estimated hot-water capacity sensor."""
         super().__init__(coordinator, "dhw_capacity_estimate")
-        self._last_register: float | None = None
+        # (mean tank temperature, capacity %) the estimate continues from.
+        self._anchor: tuple[float, float] | None = None
         self._attr_native_value = self._compute()
 
     @callback
@@ -310,17 +304,31 @@ class CtcDhwCapacityEstimateSensor(CtcEcoZenithEntity, SensorEntity):
     def _compute(self) -> float | None:
         device = self.coordinator.device
         register = device.readings.dhw_capacity
+        mean = _dhw_mean_temperature(device)
         if register is not None:
-            self._last_register = round(_clamp_percent(register), 1)
-            return self._last_register
-        estimate = _dhw_temperature_capacity(device)
-        if estimate is None:
+            value = round(_clamp_percent(register), 1)
+            self._anchor = None if mean is None else (mean, value)
+            return value
+        stop = device.readings.dhw_stop_temperature
+        if mean is None or stop is None:
             return None
-        charging = (device.readings.hp1_charge_pump or 0) > 0
-        if charging and self._last_register is not None:
-            # A tank that is being charged does not lose capacity.
-            estimate = max(estimate, self._last_register)
-        return round(estimate, 1)
+        if self._anchor is None:
+            # No 62279 reading to continue from yet (e.g. after a restart):
+            # start from a full tank at the stop temperature.
+            self._anchor = (stop, _DHW_EST_FULL)
+        anchor_mean, anchor_value = self._anchor
+        if mean < anchor_mean:
+            # Drawn or cooled: lose capacity at the draw slope, and continue
+            # from here, so a recharge climbs from the lowest point reached.
+            value = max(anchor_value - _DHW_EST_DRAW_SLOPE * (anchor_mean - mean), 0.0)
+            self._anchor = (mean, value)
+        elif stop > anchor_mean:
+            # Charging: a straight line from the anchor to full at stop.
+            progress = min((mean - anchor_mean) / (stop - anchor_mean), 1.0)
+            value = anchor_value + (_DHW_EST_FULL - anchor_value) * progress
+        else:
+            value = anchor_value
+        return round(value, 1)
 
 
 class CtcSensor(CtcEcoZenithEntity, SensorEntity):

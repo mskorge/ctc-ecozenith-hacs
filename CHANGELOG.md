@@ -4,6 +4,20 @@ All notable changes to this integration are documented here. Versions follow
 [semantic versioning](https://semver.org/); the version in
 `custom_components/ctc_ecozenith/manifest.json` matches the release tag.
 
+## 0.2.2 - 2026-10-27
+
+### Fixed
+
+- **Hot water capacity (estimated)** no longer freezes during a 62279 dropout.
+  62279 goes quiet while the tank recharges after a deep draw, and comes back
+  at 99.9 % once the tank reaches its stop temperature. The estimate now
+  carries on from the last value 62279 reported. It falls with the mean tank
+  temperature while water is drawn (4.4 % per °C, read off three deep draws),
+  then climbs in a straight line to 99.9 % at the stop temperature while the
+  tank charges. It used to stay pinned at the last register value while the
+  charge pump ran, or read 0 until the tank was back above about 45 °C, and it
+  jumped at reconnect. The charge pump is no longer used.
+
 ## 0.2.1 - 2026-10-12
 
 ### Changed
