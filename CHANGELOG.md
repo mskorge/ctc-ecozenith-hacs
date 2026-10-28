@@ -4,6 +4,17 @@ All notable changes to this integration are documented here. Versions follow
 [semantic versioning](https://semver.org/); the version in
 `custom_components/ctc_ecozenith/manifest.json` matches the release tag.
 
+## 0.2.3 - 2026-10-28
+
+### Fixed
+
+- **Hot water capacity (estimated)** no longer dips when a hot-water charge
+  starts. The charge circuit stirs the cold bottom water past the lower probe,
+  which drops 5-10 °C in a few minutes with no water drawn, and the estimate
+  read that as a draw, losing 10-20 %. While the system status is swap, hot
+  water or hot water + heating, a falling tank temperature now holds the value,
+  and the climb to 99.9 % at the stop temperature starts from there.
+
 ## 0.2.2 - 2026-10-27
 
 ### Fixed

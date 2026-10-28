@@ -36,14 +36,20 @@ if TYPE_CHECKING:
 PARALLEL_UPDATES = 0
 
 # Temperature continuation for the estimated hot-water capacity. Register 62279
-# goes quiet while the tank recharges after a deep draw and comes back at FULL
-# once the tank reaches its stop temperature. In between, the estimate carries
-# on from the last value 62279 reported, driven by the mean of the upper and
-# lower tank temperatures: down at DRAW_SLOPE % per degC while water is drawn,
-# and up along a straight line to FULL at the stop temperature while charging.
+# goes quiet while the tank charges and comes back at FULL once the tank
+# reaches its stop temperature. In between, the estimate carries on from the
+# last value 62279 reported, driven by the mean of the upper and lower tank
+# temperatures: down at DRAW_SLOPE % per degC while water is drawn, and up
+# along a straight line to FULL at the stop temperature while charging.
 # DRAW_SLOPE was read off three deep draws on the reference i360H (4.2-4.6).
 _DHW_EST_FULL = 99.9
 _DHW_EST_DRAW_SLOPE = 4.4
+# While the heat pump charges the tank, the charge circuit stirs the cold
+# bottom water past the lower probe, which drops 5-10 degC in a few minutes
+# with no water drawn. A falling mean in these states holds the value instead.
+_DHW_CHARGING_STATUSES = frozenset(
+    {SystemStatus.SWAP, SystemStatus.DHW, SystemStatus.DHW_HC}
+)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -278,8 +284,9 @@ class CtcDhwCapacityEstimateSensor(CtcEcoZenithEntity, SensorEntity):
     While it reads as faulted (raw 9999), the estimate carries on from the last
     value 62279 reported, following the tank temperatures: down as water is
     drawn, and up while the tank charges, reaching full at the stop
-    temperature, where 62279 comes back. Off by default; enable it if 62279
-    drops out on your unit.
+    temperature, where 62279 comes back. While the tank charges, a falling
+    lower probe is the charge circuit stirring the tank, not a draw, so the
+    value holds. Off by default; enable it if 62279 drops out on your unit.
     """
 
     _attr_translation_key = "dhw_capacity_estimate"
@@ -317,7 +324,13 @@ class CtcDhwCapacityEstimateSensor(CtcEcoZenithEntity, SensorEntity):
             # start from a full tank at the stop temperature.
             self._anchor = (stop, _DHW_EST_FULL)
         anchor_mean, anchor_value = self._anchor
-        if mean < anchor_mean:
+        charging = device.readings.system_status in _DHW_CHARGING_STATUSES
+        if mean < anchor_mean and charging:
+            # Charge start stirring the tank: keep the value, and climb from
+            # the lower temperature so the ramp still ends at full at stop.
+            value = anchor_value
+            self._anchor = (mean, value)
+        elif mean < anchor_mean:
             # Drawn or cooled: lose capacity at the draw slope, and continue
             # from here, so a recharge climbs from the lowest point reached.
             value = max(anchor_value - _DHW_EST_DRAW_SLOPE * (anchor_mean - mean), 0.0)
